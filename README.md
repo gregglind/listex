@@ -25,3 +25,29 @@ class S(object):
     pass
 
 
+
+# So, what is a regex
+
+(see http://swtch.com/~rsc/regexp/regexp1.html)
+
+allowed:
+
+    s[*+?]
+    s|t
+    st
+
+precedence
+    (weakest)
+
+    alternation
+    concatenation
+    repetition
+    parens
+
+    (stongest)
+
+
+NO backreferences!
+
+(backreferences aren't pure re's and can require exponential cost)
+
