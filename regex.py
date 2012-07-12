@@ -3,7 +3,15 @@
 
 import logging
 debug = logging.debug
-logging.getLogger().setLevel(30) # debug
+logging.getLogger().setLevel(0) # debug
+
+
+""" terminations:
+
+* in sequences, all 'right' end up matching
+* 
+
+"""
 
 class Regex(object):
     def __init__(self, empty):
@@ -27,26 +35,45 @@ class Regex(object):
         debug('got: %s', marked)
         return marked
 
+
+def search(re,s):
+    pass
+
+'''
+Assumptions:
+    consumes whole string
+'''
 def match(re, s):
     if not s:
         return re.empty
+    # 'mark' is always true for 0th element!  we're "good so far"
     # shift a mark in from the left
     result = re.shift(s[0], True)
-    for c in s[1:]:
+    for (ii,c) in enumerate(s[1:],1):
+        debug("%s :: %s", ii, c)
         # shift the internal marks around
         result = re.shift(c, False)
     re.reset()
     return result
 
 class Char(Regex):
+    """ leaf, for single-character matches"""
+    def __repr__(self):
+        return '%s %s' % (self.__class__, self.c)
+
     def __init__(self, c):
         Regex.__init__(self, False)
         self.c = c
 
     def _shift(self, c, mark):
+        if c == self.c:
+            debug('match %s', c)
+        else:
+            debug("no match on %s", c)
         return mark and c == self.c
 
 class Epsilon(Regex):
+    """ leaf, for 'never' matches"""
     def __init__(self):
         Regex.__init__(self, empty=True)
 
@@ -72,7 +99,8 @@ class Alternative(Binary):
     def _shift(self, c, mark):
         marked_left  = self.left.shift(c, mark)
         marked_right = self.right.shift(c, mark)
-        return marked_left or marked_right
+        return int(marked_left) or int(marked_right)  # left match first
+        # TODO, make this flagably greedy? max, min, if both
 
 
 class Repetition(Regex):
@@ -93,11 +121,24 @@ class Sequence(Binary):
         Binary.__init__(self, left, right, empty)
 
     def _shift(self, c, mark):
+        """
+        most complicated one!
+
+        (this gets called twice, with c and c+1, first time through
+            runs left, then runs right)
+        """
+        import pdb
+        #pdb.set_trace()
+        debug("sequence shift with mark %s", mark)
         old_marked_left = self.left.marked
-        marked_left = self.left.shift(c, mark)
+        marked_left = self.left.shift(c, mark) # based on current letter
         marked_right = self.right.shift(
             c, old_marked_left or (mark and self.left.empty))
-        return (marked_left and self.right.empty) or marked_right
+        if marked_right:
+            return marked_right + 1
+        else:
+            # TODO, empties advance the counter
+            return max(marked_left, self.right.empty)
 
 def make_regex(n):
     def a():

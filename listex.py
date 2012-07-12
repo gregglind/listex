@@ -34,7 +34,10 @@ class Listex(object):
 			pattern_or_callable:  to be applied on each 
 				item in the iterable.  
 		"""
-		self.regex = Objlike(pattern_or_callable)
+		if isinstance(pattern_or_callable,regex.Regex):
+			self.regex =  pattern_or_callable
+		else:
+			self.regex = Objlike(pattern_or_callable)
 
 
 	def then(self,other):
@@ -61,9 +64,50 @@ class Listex(object):
 		# i.e., not just iterable
 		return regex.match(self.regex, indexable_list)
 
-	def search(self,indexable_list):
+	def search(self,indexable_list,start=0):
 		L = indexable_list
-		return Listex(anything).then(self).then(anything).match(L)
+		#return Listex(anything).then(self).then(anything).match(L)
+		# we can get positions O(logN), by
+		# binary serarching both halves of L
+		# then matching on that.
+		n = len(L)
+		"""
+		until I figure out how to find 'end of match'
+	    ## ugh, this is O(n**3 * m)!
+
+		idea:
+			if self.then(anything).match(L):
+				# start cutting from right,
+			else:
+				# cut from left
+
+		"""
+		lastmatch=0
+		for left in range(n):
+			if left < lastmatch:
+				continue # ugh, primitive
+			for right in xrange(n,left,-1):  # trim right
+				if self.match(L[left:right]):
+					lastmatch = right # where to start next
+					yield True, start+left,start+right
+					#for x in self.search(L[left:],start=left):
+					#	yield x
+					break
+
+
+class Some(Listex):
+	def __init__(self,pattern_or_callable,min=0,max=0):
+		poc = pattern_or_callable
+		if max != 0:
+			raise ValueError ("max not yet implemented")
+		if min > 0:
+			Listex.__init__(self,pattern_or_callable)
+			for ii in xrange(min-1):
+				self.then(Listex(pattern_or_callable))
+
+			self.then(Listex(regex.Repetition(Objlike(poc))))
+		else:
+			Listex.__init__(self,regex.Repetition(Objlike(poc)))
 
 class oneormore(Listex):
 	pass
@@ -95,12 +139,16 @@ def test_me():
 	# search
 	mylist = [dict(d=[3,4,5]),dict(a=1),dict(b=1,c=2),dict(d=[1,2,3])]
 	assert not Listex(dict(a=1)).then(dict(b=1)).match(mylist)
-	assert Listex(dict(a=1)).then(dict(b=1)).search(mylist)
+	#assert Listex(dict(a=1)).then(dict(b=1)).search(mylist)
 
-	assert not Listex(dict(a=1)).then(dict(b=1)).then({'not':'here'}).search(mylist)
-
-
+	#assert not Listex(dict(a=1)).then(dict(b=1)).then({'not':'here'}).search(mylist)
 
 
+	mylist = [dict(x=1), dict(a=1), dict(x=1), dict(a=1)]
+	print list(Listex(dict(a=1)).search(mylist))
 
 
+	mylist = [dict(x=1), dict(a=1), dict(a=1),dict(a=1), dict(x=1), dict(a=1)]
+	print list(Listex(regex.Repetition(Objlike(dict(a=1)))).search(mylist))
+
+	print list(Some(dict(a=1),2).search(mylist))
