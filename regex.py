@@ -134,11 +134,15 @@ class Sequence(Binary):
         marked_left = self.left.shift(c, mark) # based on current letter
         marked_right = self.right.shift(
             c, old_marked_left or (mark and self.left.empty))
+        
+        return (marked_left and self.right.empty) or marked_right
+        """
         if marked_right:
             return marked_right + 1
         else:
             # TODO, empties advance the counter
             return max(marked_left, self.right.empty)
+        """
 
 def make_regex(n):
     def a():
